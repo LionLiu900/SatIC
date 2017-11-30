@@ -6,7 +6,7 @@ function readFormula(fileName) {
     let variables = readVariables(clauses);
     let specOk = checkProblemSpecification(text, clauses, variables);
     let result = { 'clauses': [], 'variables': [] };
-    if(specOk) {
+    if (specOk) {
         result.clauses = clauses;
         result.variables = variables;
     }
@@ -33,7 +33,7 @@ function readClauses(text) {
 }
 
 function getVariables(clauses) {
-    // Função que retorna as váriaveis ordenadas num array.
+    // Função que retorna as variáveis ordenadas num array.
     // Ex: {1, 2, 3, 4}
     let variables = [];
     for (let i = 0; i < clauses.length; i++) {
@@ -59,9 +59,9 @@ function readVariables(clauses) {
 
 function checkProblemSpecification(text, clauses, variables) {
     // Regex que identifica o padrão da linha p.
-    let reg = /p\scnf\s[1-9]{1,}\s[1-9]{1,}/g;
+    let reg = /p\scnf\s[0-9]{1,}\s[0-9]{1,}/g;
     let pStarts = text.search(reg);
-    if(pStarts === -1) {
+    if (pStarts === -1) {
         //Se o .cnf não tiver a linha p irá ser retornado true, pois não haverá nenhuma condição para as clausulas.
         return true;
     } else {
@@ -72,8 +72,8 @@ function checkProblemSpecification(text, clauses, variables) {
         // Transformando as strings em inteiros.
         let varsQuantity = Number(splittedP[0]);
         let clausesQuantity = Number(splittedP[1]);
-        // Comparação com a condição de p e o tamanho das váriaves e das clausulas.
-        if(varsQuantity === variables.length && clausesQuantity === clauses.length) {
+        // Comparação com a condição de p e o tamanho das variáves e das clausulas.
+        if (varsQuantity === variables.length && clausesQuantity === clauses.length) {
             return true;
         } else {
             return false;
@@ -81,11 +81,11 @@ function checkProblemSpecification(text, clauses, variables) {
     }
 }
 
-// Váriavel que armazenará os valores booleanos já utilizados
+// Variável que armazenará os valores booleanos já utilizados
 var usedAssignments = [];
 
 function nextAssignment(currentAssignment) {
-    // Adicionando o atual assignment à váriavel.
+    // Adicionando o atual assignment à variável.
     usedAssignments.push(currentAssignment);
     let newAssignment = [];
     for (let i = 0; i < currentAssignment.length; i++) {
