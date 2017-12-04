@@ -1,3 +1,12 @@
+module.exports = {
+    'solve': function (fileName) {
+        let formula = readFormula(fileName)
+        let result = doSolve(formula.clauses, formula.variables)
+        return result
+    }
+};
+
+
 function readFormula(fileName) {
     let fs = require('fs');
     // No .readFileSync é necessário passar o nome do arquivo e o encoding.
@@ -15,13 +24,21 @@ function readFormula(fileName) {
 
 function readClauses(text) {
     // Regex que diz a respeito ao padrão das clausulas no .cnf
-    let regex = /(\-?[1-9]\s){1,}0/g;
-    // o .search() vai retornar a posição de onde começa as clausula e o .slice vai criar uma string só com elas.
+    let regex = /(\-?[0-9]+\s){1,}0/g;
+    // o .search() vai retornar a posição de onde começa as clausulas e o .slice vai criar uma string só com elas.
     let stringClauses = text.slice(text.search(regex));
     // o .split() irá retornar um array com as strings separadas pelo parametro da função.
     let clauses = stringClauses.split('\n');
     for (let i = 0; i < clauses.length; i++) {
-        clauses[i] = clauses[i].split(' ');
+        // Se a linha da clausula acabar com '0' será "splitado" normalmente.
+        if (clauses[i].endsWith('0\r') || clauses[i].endsWith('0')) {
+            clauses[i] = clauses[i].split(' ');
+        } else {
+            // Se a linha não acabar com '0' ela será concatenada com a próxima, e esta será removida(splice) do array, diminuindo seu tamanho.
+            clauses[i] = clauses[i].slice(0, -1) + ' ' + clauses[i + 1];
+            clauses.splice(i + 1, 1);
+            clauses[i] = clauses[i].split(' ');
+        }
         // O .pop irá remover o '0' de cada array.
         clauses[i].pop();
         // O Number() serve para transformar as strings em inteiros.
@@ -109,4 +126,54 @@ function isArrayInArray(inArray, array) {
         }
     }
     return false;
+}
+
+function doSolve(clauses, assignment) {
+    let isSat = false;
+    // Declaração da string para ser concatenada.
+    let finalSentence = '';
+    // A quantidade total de assignments será 2 ^ tamanho do assignment;
+    let totalAssignment = Math.pow(2, assignment.length);
+    let usedAssignments = 0;
+    // Se for um sat ou ter utilizado todas as possibilidades, sairá do while.
+    while ((!isSat) && (usedAssignments < totalAssignment)) {
+        // Será formada uma string como formato da sentença, para pegar o valor dela no final com o eval().
+        let finalSentence = '(';
+        for (let i = 0; i < clauses.length; i++) {
+            let orSentence = '(';
+            for (let j = 0; j < clauses[i].length; j++) {
+                // Se a variável não tiver o 'not' será adicionada normalmente a sentença com os '||'.
+                // Será utilizado o valor da clausula como posição no array de booleanos.
+                if (clauses[i][j] > 0) {
+                    orSentence += assignment[clauses[i][j] - 1];
+                } else {
+                    orSentence += !assignment[Math.abs(clauses[i][j]) - 1];
+                }
+                // Só erá concatenado o ' || ' até antes do último booleano. 
+                if (j < clauses[i].length - 1) {
+                    orSentence += ' || ';
+                }
+            }
+            orSentence += ')';
+            finalSentence += orSentence;
+            // Só erá concatenado o ' && ' até antes da última orSentence. 
+            if (i < clauses.length - 1) {
+                finalSentence += ' && ';
+            }
+        }
+        finalSentence += ')';
+        isSat = eval(finalSentence);
+        if (!isSat) {
+            assignment = nextAssignment(assignment);
+        }
+        usedAssignments++;
+    }
+    let result = {
+        'isSat': isSat,
+        satisfyingAssignment: null
+    };
+    if (isSat) {
+        result.satisfyingAssignment = assignment
+    }
+    return result;
 }
