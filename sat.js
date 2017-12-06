@@ -68,8 +68,8 @@ function readVariables(clauses) {
     let vars = getVariables(clauses);
     let variableValues = [];
     for (let i = 0; i < vars.length; i++) {
-        // Será gerado valores booleanos aleatórios com o Math.random(), que retorna números aleatórios entre 0 e 1.
-        variableValues.push(Math.random() >= 0.5);
+        // O primeiro valor das variáveis serão todos false.
+        variableValues.push(false);
     }
     return variableValues;
 }
@@ -79,7 +79,7 @@ function checkProblemSpecification(text, clauses, variables) {
     let reg = /p\scnf\s[0-9]{1,}\s[0-9]{1,}/g;
     let pStarts = text.search(reg);
     if (pStarts === -1) {
-        //Se o .cnf não tiver a linha p irá ser retornado true, pois não haverá nenhuma condição para as clausulas.
+        //Se o .cnf não tiver a linha p irá ser retornado true, pois não haverá nenhuma condição restringindo as clausulas.
         return true;
     } else {
         let pEnds = text.indexOf('\n', pStarts);
@@ -98,48 +98,41 @@ function checkProblemSpecification(text, clauses, variables) {
     }
 }
 
-// Variável que armazenará os valores booleanos já utilizados
-var usedAssignments = [];
+// Variável que armazenará a quantidade de combinações booleanas já utilizadas.
+var usedAssignments = 1;
 
 function nextAssignment(currentAssignment) {
-    // Adicionando o atual assignment à variável.
-    usedAssignments.push(currentAssignment);
     let newAssignment = [];
+    let half = Math.pow(2, currentAssignment.length) / 2;
     for (let i = 0; i < currentAssignment.length; i++) {
-        newAssignment.push(Math.random() >= 0.5);
-    }
-    // Se o novo assignment gerado já foi utilizado ou o total de possibilidades ainda não foi gerada, entrará no while.
-    while (isArrayInArray(usedAssignments, newAssignment) && usedAssignments.length < Math.pow(2, currentAssignment.length)) {
-        for (let i = 0; i < currentAssignment.length; i++) {
-            newAssignment[i] = Math.random() >= 0.5;
+        // Se a quantidade de assigments passar da metade de possibilidades
+        // será calculado com o 'not' das possibilidades passadas.
+        if (usedAssignments >= half) {
+            newAssignment.push(!Boolean(Math.floor(((usedAssignments - currentAssignment.length) / Math.pow(2, i)) % 2)));
+        } else {
+            // Será calculado diferentes possibilidades dependendo da quantidade de variáveis já utilizadas(UA).
+            // O UA será dividido por 2 ^ i, com o i indo de 0 até a quantidade de variáveis(length).
+            // Será depois aplicada a função chão para deixar o resultado inteiro.
+            // Depois será obtido o % 2, que só poderá variar entre 0 e 1.
+            // Para cada UA será gerado uma sequência diferente de 0 e 1, mas todas as possibilidades entre 0 e 2 ^ length.
+            newAssignment.push(Boolean(Math.floor((usedAssignments / Math.pow(2, i)) % 2)));
         }
     }
-    return newAssignment
-}
-
-// Função que checa se um array se encontra noutro array. 
-function isArrayInArray(inArray, array) {
-    for (let i = 0; i < inArray.length; i++) {
-        //Usando o .toString(), pois [x, y] === [x, y] dá false. Valeu JavaScript!
-        if (inArray[i].toString() === array.toString()) {
-            return true;
-        }
-    }
-    return false;
+    // Incremento na quantidade utilizada.
+    usedAssignments++;
+    return newAssignment;
 }
 
 function doSolve(clauses, assignment) {
     let isSat = false;
-    // Declaração da string para ser concatenada.
-    let finalSentence = '';
     // A quantidade total de assignments será 2 ^ tamanho do assignment;
     let totalAssignment = Math.pow(2, assignment.length);
     let usedAssignments = 0;
     // Se for um sat ou ter utilizado todas as possibilidades, sairá do while.
-    while ((!isSat) && (usedAssignments < totalAssignment)) {
-        // Será formada uma string como formato da sentença, para pegar o valor dela no final com o eval().
-        let finalSentence = '(';
+    satSolving: while ((!isSat) && (usedAssignments < totalAssignment)) {
         for (let i = 0; i < clauses.length; i++) {
+            // Será formada uma string como formato da sentença de cada linha, para pegar o valor dela com o eval().
+            // Se alguma delas for falsa já passa para o próximo assignment.
             let orSentence = '(';
             for (let j = 0; j < clauses[i].length; j++) {
                 // Se a variável não tiver o 'not' será adicionada normalmente a sentença com os '||'.
@@ -154,19 +147,15 @@ function doSolve(clauses, assignment) {
                     orSentence += ' || ';
                 }
             }
-            orSentence += ')';
-            finalSentence += orSentence;
-            // Só erá concatenado o ' && ' até antes da última orSentence. 
-            if (i < clauses.length - 1) {
-                finalSentence += ' && ';
+            if (!(eval(orSentence + ')'))) {
+                assignment = nextAssignment(assignment);
+                usedAssignments++;
+                // Voltará para o começo do while já com outro assignment.
+                continue satSolving;
             }
         }
-        finalSentence += ')';
-        isSat = eval(finalSentence);
-        if (!isSat) {
-            assignment = nextAssignment(assignment);
-        }
-        usedAssignments++;
+        // Caso nenhum dos 'ou' deu false, chegamos a conclusão que isSat é verdadeiro.
+        isSat = true;
     }
     let result = {
         'isSat': isSat,
